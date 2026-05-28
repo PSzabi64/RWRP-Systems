@@ -14,6 +14,17 @@ import { logger } from "./logger";
 import { startPoller } from "./poller";
 import { castVote, resumeSessionIfNeeded } from "./session";
 import { state, updateState } from "./state";
+import {
+  buildSetupEmbedModal,
+  buildAddOptionModal,
+  handleSetupEmbedModal,
+  handleAddOptionModal,
+  handleSetupRemoveLast,
+  handleSetupDeploy,
+  handleTicketSelect,
+  handleTicketQuestion,
+  handleTicketClose,
+} from "./tickets";
 
 import * as serverCmd from "./commands/server";
 import * as playersCmd from "./commands/players";
@@ -25,12 +36,14 @@ import * as vehiclesCmd from "./commands/vehicles";
 import * as commandlogsCmd from "./commands/commandlogs";
 import * as erlccommandCmd from "./commands/erlccommand";
 import * as startvoteCmd from "./commands/startvote";
+import * as endvoteCmd from "./commands/endvote";
 import * as autoboostermsgCmd from "./commands/autoboostermsg";
 import * as sessioncloseCmd from "./commands/sessionclose";
 import * as sessionpingCmd from "./commands/sessionping";
 import * as setroleCmd from "./commands/setrole";
 import * as scheduleCmd from "./commands/schedule";
 import * as setupCmd from "./commands/setup";
+import * as ticketsetupCmd from "./commands/ticketsetup";
 
 type AnySlashBuilder =
   | SlashCommandBuilder
@@ -53,12 +66,14 @@ const commands: Command[] = [
   commandlogsCmd,
   erlccommandCmd,
   startvoteCmd,
+  endvoteCmd,
   autoboostermsgCmd,
   sessioncloseCmd,
   sessionpingCmd,
   setroleCmd,
   scheduleCmd,
   setupCmd,
+  ticketsetupCmd,
 ];
 
 async function handleVoteButton(
@@ -144,13 +159,58 @@ async function main(): Promise<void> {
       }
     } else if (interaction.isButton()) {
       try {
-        if (interaction.customId === "session_vote") {
-          await handleVoteButton(interaction, client);
-        } else if (interaction.customId === "session_ping_subscribe") {
-          await handlePingSubscribe(interaction);
+        switch (interaction.customId) {
+          case "session_vote":
+            await handleVoteButton(interaction, client);
+            break;
+          case "session_ping_subscribe":
+            await handlePingSubscribe(interaction);
+            break;
+          case "ticket_setup_edit_embed":
+            await interaction.showModal(buildSetupEmbedModal());
+            break;
+          case "ticket_setup_add_option":
+            await interaction.showModal(buildAddOptionModal());
+            break;
+          case "ticket_setup_remove_last":
+            await handleSetupRemoveLast(interaction);
+            break;
+          case "ticket_setup_deploy":
+            await handleSetupDeploy(interaction, client);
+            break;
+          case "ticket_close":
+            await handleTicketClose(interaction);
+            break;
         }
       } catch (err) {
         logger.error({ err }, "Button interaction error");
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: "❌ Something went wrong.", ephemeral: true }).catch(() => {});
+        }
+      }
+    } else if (interaction.isStringSelectMenu()) {
+      try {
+        if (interaction.customId === "ticket_select") {
+          await handleTicketSelect(interaction);
+        }
+      } catch (err) {
+        logger.error({ err }, "Select menu interaction error");
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: "❌ Something went wrong.", ephemeral: true }).catch(() => {});
+        }
+      }
+    } else if (interaction.isModalSubmit()) {
+      try {
+        if (interaction.customId === "ticket_embed_modal") {
+          await handleSetupEmbedModal(interaction);
+        } else if (interaction.customId === "ticket_option_modal") {
+          await handleAddOptionModal(interaction);
+        } else if (interaction.customId.startsWith("ticket_question_")) {
+          const index = parseInt(interaction.customId.replace("ticket_question_", ""), 10);
+          await handleTicketQuestion(interaction, client, index);
+        }
+      } catch (err) {
+        logger.error({ err }, "Modal submit interaction error");
         if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({ content: "❌ Something went wrong.", ephemeral: true }).catch(() => {});
         }
