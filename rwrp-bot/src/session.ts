@@ -1,4 +1,4 @@
-import { Client, TextChannel } from "discord.js";
+import { Client, TextChannel, EmbedBuilder } from "discord.js";
 import { erlc } from "./erlc";
 import { state, updateState } from "./state";
 import {
@@ -162,6 +162,45 @@ async function updateSessionMessage(client: Client): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "Failed to update session message");
   }
+}
+
+export async function endVote(client: Client, targetChannelId?: string): Promise<{ ok: boolean; error?: string }> {
+  if (state.sessionState !== "voting") {
+    return { ok: false, error: "There is no active vote to end." };
+  }
+
+  if (state.sessionChannelId && state.voteMessageId) {
+    const voteChannel = await getTextChannel(client, state.sessionChannelId);
+    if (voteChannel) {
+      try {
+        const msg = await voteChannel.messages.fetch(state.voteMessageId);
+        await msg.delete();
+      } catch (err) {
+        logger.warn({ err }, "Failed to delete vote message on end");
+      }
+    }
+  }
+
+  const embedChannelId = targetChannelId ?? state.sessionChannelId;
+  if (embedChannelId) {
+    const embedChannel = await getTextChannel(client, embedChannelId);
+    if (embedChannel) {
+      const cancelledEmbed = new EmbedBuilder()
+        .setTitle("🚫 RWRP Systems — Vote Cancelled")
+        .setDescription("The session vote has been cancelled by an administrator.")
+        .setColor(0xe74c3c)
+        .setFooter({ text: "RWRP Systems • Session Management" })
+        .setTimestamp();
+      if (state.bannerUrl) cancelledEmbed.setImage(state.bannerUrl);
+      await embedChannel.send({ embeds: [cancelledEmbed] }).catch((err) => {
+        logger.warn({ err }, "Failed to send vote cancelled embed");
+      });
+    }
+  }
+
+  updateState({ sessionState: "idle", voters: [], voteMessageId: null, sessionMessageId: null });
+  logger.info("Session vote ended by admin");
+  return { ok: true };
 }
 
 export async function closeSession(client: Client): Promise<void> {

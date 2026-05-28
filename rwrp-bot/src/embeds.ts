@@ -3,9 +3,11 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
 } from "discord.js";
 import type { ServerInfo, Player } from "./erlc";
-import type { BotState } from "./state";
+import type { BotState, TicketConfig, TicketOption } from "./state";
 
 function progressBar(current: number, needed: number, length = 20): string {
   const filled = Math.round((current / needed) * length);
@@ -135,5 +137,85 @@ export function buildSessionClosedRow(): ActionRowBuilder<ButtonBuilder> {
       .setLabel("Server Offline")
       .setStyle(ButtonStyle.Danger)
       .setDisabled(true),
+  );
+}
+
+export function buildTicketPanelEmbed(config: TicketConfig): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle(config.embedTitle)
+    .setDescription(config.embedDescription)
+    .setColor(0xe74c3c)
+    .setFooter({ text: "RWRP Systems • Support" })
+    .setTimestamp();
+  for (const opt of config.options) {
+    embed.addFields({
+      name: `${opt.emoji ? opt.emoji + " " : ""}${opt.label}`,
+      value: opt.description,
+    });
+  }
+  if (config.bannerUrl) embed.setImage(config.bannerUrl);
+  return embed;
+}
+
+export function buildTicketAdminEmbed(config: TicketConfig): EmbedBuilder {
+  const optionsList =
+    config.options.length === 0
+      ? "_No options added yet_"
+      : config.options
+          .map((opt, i) => `**${i + 1}.** ${opt.emoji ?? "🎫"} **${opt.label}** — ${opt.description}`)
+          .join("\n");
+  return new EmbedBuilder()
+    .setTitle("🎫 Ticket Panel Setup")
+    .setDescription("Use the buttons below to configure your ticket panel, then hit **Deploy Panel** when ready.")
+    .addFields(
+      { name: "Panel Title", value: config.embedTitle, inline: true },
+      { name: "Panel Channel", value: config.panelChannelId ? `<#${config.panelChannelId}>` : "_Not set_", inline: true },
+      { name: "Ticket Category", value: config.ticketCategoryId ? `<#${config.ticketCategoryId}>` : "_Not set_", inline: true },
+      { name: "Support Role", value: config.supportRoleId ? `<@&${config.supportRoleId}>` : "_Not set_", inline: true },
+      { name: "Banner", value: config.bannerUrl ? "✅ Set" : "❌ Not set", inline: true },
+      { name: `Options (${config.options.length})`, value: optionsList },
+    )
+    .setColor(0x3498db)
+    .setFooter({ text: "RWRP Systems • Ticket Setup" });
+}
+
+export function buildTicketSelectRow(options: TicketOption[]): ActionRowBuilder<StringSelectMenuBuilder> {
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("ticket_select")
+    .setPlaceholder("Support Options");
+  for (let i = 0; i < options.length; i++) {
+    const opt = options[i]!;
+    const item = new StringSelectMenuOptionBuilder()
+      .setLabel(opt.label)
+      .setDescription(opt.description.slice(0, 100))
+      .setValue(String(i));
+    if (opt.emoji) item.setEmoji(opt.emoji);
+    menu.addOptions(item);
+  }
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
+}
+
+export function buildTicketSetupButtons(): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("ticket_setup_edit_embed")
+      .setLabel("Edit Embed")
+      .setEmoji("✏️")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("ticket_setup_add_option")
+      .setLabel("Add Option")
+      .setEmoji("➕")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("ticket_setup_remove_last")
+      .setLabel("Remove Last")
+      .setEmoji("🗑️")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("ticket_setup_deploy")
+      .setLabel("Deploy Panel")
+      .setEmoji("🚀")
+      .setStyle(ButtonStyle.Success),
   );
 }

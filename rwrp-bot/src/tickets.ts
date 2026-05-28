@@ -110,10 +110,15 @@ export async function handleSetupEmbedModal(interaction: ModalSubmitInteraction)
   updateState({
     ticketConfig: { ...state.ticketConfig, embedTitle: title, embedDescription: description, bannerUrl: banner },
   });
-  await interaction.update({
+  const payload = {
     embeds: [buildTicketAdminEmbed(state.ticketConfig)],
     components: [buildTicketSetupButtons().toJSON()],
-  });
+  };
+  if (interaction.isFromMessage()) {
+    await interaction.update(payload);
+  } else {
+    await interaction.reply({ ...payload, ephemeral: true });
+  }
 }
 
 export async function handleAddOptionModal(interaction: ModalSubmitInteraction): Promise<void> {
@@ -125,10 +130,15 @@ export async function handleAddOptionModal(interaction: ModalSubmitInteraction):
   updateState({
     ticketConfig: { ...state.ticketConfig, options: [...state.ticketConfig.options, newOption] },
   });
-  await interaction.update({
+  const payload = {
     embeds: [buildTicketAdminEmbed(state.ticketConfig)],
     components: [buildTicketSetupButtons().toJSON()],
-  });
+  };
+  if (interaction.isFromMessage()) {
+    await interaction.update(payload);
+  } else {
+    await interaction.reply({ ...payload, ephemeral: true });
+  }
 }
 
 export async function handleSetupRemoveLast(interaction: ButtonInteraction): Promise<void> {

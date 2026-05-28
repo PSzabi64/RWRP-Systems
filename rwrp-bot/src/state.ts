@@ -3,6 +3,24 @@ import { join } from "path";
 
 const STATE_FILE = join(process.cwd(), "bot-state.json");
 
+export interface TicketOption {
+  label: string;
+  description: string;
+  emoji?: string;
+  question: string;
+}
+
+export interface TicketConfig {
+  panelChannelId: string | null;
+  panelMessageId: string | null;
+  ticketCategoryId: string | null;
+  supportRoleId: string | null;
+  embedTitle: string;
+  embedDescription: string;
+  bannerUrl: string | null;
+  options: TicketOption[];
+}
+
 export interface BotState {
   sessionChannelId: string | null;
   boosterChannelId: string | null;
@@ -18,6 +36,7 @@ export interface BotState {
   scheduledVoteNeeded: number;
   pingSubscribers: string[];
   bannerUrl: string | null;
+  ticketConfig: TicketConfig;
 }
 
 const DEFAULT_STATE: BotState = {
@@ -35,6 +54,16 @@ const DEFAULT_STATE: BotState = {
   scheduledVoteNeeded: 15,
   pingSubscribers: [],
   bannerUrl: null,
+  ticketConfig: {
+    panelChannelId: null,
+    panelMessageId: null,
+    ticketCategoryId: null,
+    supportRoleId: null,
+    embedTitle: "🎫 RWRP Systems — Support",
+    embedDescription: "Welcome to support! Please select an option below to open a ticket.",
+    bannerUrl: null,
+    options: [],
+  },
 };
 
 export let state: BotState = DEFAULT_STATE;
